@@ -1,0 +1,22 @@
+{
+  "name": "KassaKiosk Kassa",
+  "description": "KassaKiosk Kassa App",
+  "version": "0.1",
+  "manifest_version": 2,
+  "app": {
+    "background": {
+      "scripts": ["background.js"]
+    }
+  },
+  "icons": {
+    "16": "kiosk-16.png",
+    "32": "kiosk-32.png",
+    "64": "kiosk-64.png",
+    "128": "kiosk-128.png"
+  },
+  "permissions": [
+    "storage",
+    "fullscreen",
+    "https://cdn.kassakiosk.be/"
+  ]
+}
