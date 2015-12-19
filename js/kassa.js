@@ -125,13 +125,10 @@ var kassa = {
                     products.products.push(product);
                 });
 
-                $.post(kassa.api+'orders/create', {
-                    uid: kassa.uid,
-                    secret: kassa.secret,
-                    kiosk_id: kassa.id,
+                sendPost('orders/create', {
                     products: JSON.stringify(products),
                     participant: currentParticipant.id
-                }).done(function(data) {
+                }, function(data) {
                     console.log(data);
                     $('#main').addClass('blurable');
                     $('#main-overlay').show();
@@ -142,7 +139,7 @@ var kassa = {
 
 
                     $('input:text:visible:first').focus();
-                }).fail(function(data) {
+                }, function(data) {
                     console.log('order failed')
                 });
             }
@@ -154,18 +151,18 @@ var kassa = {
             $('#main-overlay').hide();
             updateTotal();
             currentParticipant.barcode = $('#order-next-barcode').val();
-            $.post(kassa.api+'user', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id, barcode: $('#order-next-barcode').val()}).done(function(data) {
+            sendPost('user', {barcode: $('#order-next-barcode').val()}, function(data) {
                 currentParticipant.id = data.id;
                 currentParticipant.name = data.name;
                 currentParticipant.image = data.image;
                 currentParticipant.crew = data.crew;
-            }).fail(function() {
+            }, function() {
                 console.log('Failed to load user data!');
                 currentParticipant.id = 0;
                 currentParticipant.name = "Not found";
                 currentParticipant.image = "http://www.fom.be/img/icons/default/defaultavatar.jpg";
                 currentParticipant.crew = 0;
-            }).always(function() {
+            }, function() {
                 $('#user-data .user-nickname').text(currentParticipant.name);
                 $('#user-data .user-image').attr('src', currentParticipant.image);
                 if(currentParticipant.crew == 1) {
@@ -195,7 +192,7 @@ var kassa = {
 
         });
 
-        $.post(kassa.api+'products', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id}).done(function(data) {
+        sendPost('products', {}, function(data) {
             categories = data;
             $('#categories').empty();
             $('.order-list').empty();
@@ -223,8 +220,8 @@ var kassa = {
             updateScroll();
         });
 
-        setInterval(function() {
-            $.post(kassa.api+'products', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id}).done(function(data) {
+        /*setInterval(function() {
+            sendPost('products', {}, function(data) {
                 categories = data;
                 categories.forEach(function(category) {
                     if(category.visible) {
@@ -244,7 +241,7 @@ var kassa = {
                 updateScroll();
                 updateTotal();
             });
-        }, 1000);
+        }, 1000);*/
 
         function getProductById(id) {
             var returnVar;
@@ -399,6 +396,16 @@ var kassa = {
             $('#order-next-barcode').focus();
             $('#main-overlay .panel-body .order-response').hide();
         }
+
+        function sendPost(url, data, done, fail, always) {
+            data.uid = kassa.uid;
+            data.kiosk_id = kassa.id;
+            var pre_token = JSON.stringify(stringifyData(data))+kassa.secret;
+            console.log(pre_token)
+            data.token = window.md5(pre_token);
+            console.log(url + ' : ' + JSON.stringify(data));
+            $.post(kassa.api+url, data).done(done).fail(fail).always(always);
+        }
     }),
     setup: (function() {
         $(document).ready(function() {
@@ -419,7 +426,17 @@ var kassa = {
                 kassa.api = $('#setup-api').val();
                 kassa.uid = $('#setup-uid').val();
                 kassa.secret = $('#setup-secret').val();
-                $.post(kassa.api+'check', {uid: kassa.uid, secret: kassa.secret}, function(data) {
+
+                var data = {
+                    uid: ""
+                };
+                var url = 'check';
+                data.uid = kassa.uid;
+                var pre_token = JSON.stringify(stringifyData(data))+kassa.secret;
+                console.log(pre_token)
+                data.token = window.md5(pre_token);
+                console.log(url + ' : ' + JSON.stringify(data));
+                $.post(kassa.api+url, data).done(function(data) {
                     if(data.success) {
                         kassa.id = data.kiosk_id;
                         localStorage.kassa = JSON.stringify({
@@ -441,3 +458,15 @@ var kassa = {
     })
 };
 kassa.setup();
+
+
+function stringifyData(data) {
+    if(typeof data == "object") {
+        for(var key in data) {
+            data[key] = stringifyData(data[key]);
+        }
+    } else {
+        data = data.toString();
+    }
+    return data;
+}
