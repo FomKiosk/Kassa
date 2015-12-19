@@ -47,12 +47,24 @@
         </div>
         <div class="col-md-9" id="categories-parent">
             <div class="row" id="categories-blurable">
-                <div class="col-md-3" id="categories"></div>
+                <div class="col-md-3" id="categories">
+                </div>
                 <div class="col-md-8" id="products"></div>
                 <div class="col-md-1 scroll" id="scroll-products">
                     <div class="scroll-up"><span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span></div>
                     <div class="scroll-bar"><span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span></div>
                     <div class="scroll-down"><span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></div>
+                </div>
+                <div class="col-md-2" id="user-data">
+                    <h3 class="user-nickname">Nickname</h3>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" class="user-crew"> Crew
+                            </label>
+                        </div>
+                    </div>
+                    <img class="user-image" src="http://www.fom.be/img/icons/default/defaultavatar.jpg">
                 </div>
             </div>
             <div class="row" id="product-overlay">
@@ -67,15 +79,15 @@
         <div class="panel-body">
             <div class="form-group">
                 <label for="setup-api">API Server</label>
-                <input type="text" class="form-control" id="setup-api" placeholder="https://api.kassakiosk.be/" value="https://api.kassakiosk.be/">
+                <input type="text" class="form-control" id="setup-api" placeholder="https://api.kassakiosk.be/" value="http://management.kassakiosk.dev/api/v1/">
             </div>
             <div class="form-group">
                 <label for="setup-uid">UID</label>
-                <input type="text" class="form-control" id="setup-uid" placeholder="UID">
+                <input type="text" class="form-control" id="setup-uid" placeholder="UID" value="1">
             </div>
             <div class="form-group">
                 <label for="setup-secret">Secret</label>
-                <input type="text" class="form-control" id="setup-secret" placeholder="Secret">
+                <input type="text" class="form-control" id="setup-secret" placeholder="Secret" value="1">
             </div>
             <button type="submit" class="btn btn-default setup-submit">Login</button>
         </div>

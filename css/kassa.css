@@ -278,3 +278,13 @@ body {
 .order-nr {
     margin-bottom: 50px;
 }
+
+#categories-blurable {
+    position: relative;
+}
+
+#user-data {
+    position: absolute;
+    bottom: 10px;
+    text-align: center;
+}

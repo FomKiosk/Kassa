@@ -2,12 +2,22 @@
  * Created by Ssoele on 26/11/2015.
  */
 var kassa = {
+    id: 0,
     api: "",
     uid: "",
     secret: "",
     run: (function() {
         var categories;
         var tmpProduct;
+        var currentParticipant = {
+            id: 0,
+            name: "Not found!",
+            image: "http://www.fom.be/img/icons/default/defaultavatar.jpg",
+            crew: 0,
+            barcode: 0
+        }
+
+        startFirstOrder();
 
         $('#products').on('scroll', scrollHandler);
         $('#products').css('height', ($(window).height()-50));
@@ -66,11 +76,11 @@ var kassa = {
 
         $('#products').on('click', '.product', function() {
             var product = getProductById($(this).data('product-id'));
-            if(product.categories_id_sub == null) {
+            if(product.category_id_sub == null) {
                 addProduct(product);
             } else {
                 tmpProduct = product;
-                var subcategory = getCategoryById(product.categories_id_sub);
+                var subcategory = getCategoryById(product.category_id_sub);
                 $('#categories').addClass('blurable');
                 $('#products').addClass('blurable');
                 $('#product-overlay').show();
@@ -78,7 +88,7 @@ var kassa = {
                 $('#subproducts').append('<div class="row" id="row-subcategory-'+subcategory.id+'" data-category="'+subcategory.id+'"></h3>');
                 subcategory.products.forEach(function(subproduct) {
                     if(subproduct.visible) {
-                        $('#row-subcategory-'+subcategory.id).append('<div class="col-lg-2 col-md-3 col-sm-3"><div class="thumbnail product" data-product-id="'+subproduct.id+'"><img src="'+subproduct.image+'" alt="'+subproduct.name+'"><div class="caption"><p class="product-info"><span class="product-name">'+subproduct.name+'</span><span class="product-price-plus">'+subproduct.price+'</span></p></div></div></div>');
+                        $('#row-subcategory-'+subcategory.id).append('<div class="col-lg-2 col-md-3 col-sm-3"><div class="thumbnail product" data-product-id="'+subproduct.id+'"><img src="https://cdn.kassakiosk.be/images/products/'+subproduct.id+'.png" alt="'+subproduct.name+'"><div class="caption"><p class="product-info"><span class="product-name">'+subproduct.name+'</span><span class="product-price-plus">'+subproduct.price+'</span></p></div></div></div>');
                     }
                 });
             }
@@ -111,19 +121,27 @@ var kassa = {
                     if(isNumeric($(this).data('subproduct'))) {
                         product.sub = $(this).data('subproduct');
                     }
-
+                    product.price = $(this).data('price');
                     products.products.push(product);
                 });
 
                 $.post(kassa.api+'orders/create', {
                     uid: kassa.uid,
                     secret: kassa.secret,
-                    products: JSON.stringify(products)
+                    kiosk_id: kassa.id,
+                    products: JSON.stringify(products),
+                    participant: currentParticipant.id
                 }).done(function(data) {
-                    $('#main-overlay .panel-body').empty().append('<div class="order-response"><h3 class="order-header">Your order number</h3><h1 class="order-nr">'+data.order+'</h1><button type="button" class="btn btn-danger btn-lg order-next">Next order</button></div>');
-
+                    console.log(data);
                     $('#main').addClass('blurable');
                     $('#main-overlay').show();
+                    $('#main-overlay .order-response').show();
+
+                    $('#main-overlay .panel-body .order-response .order-nr').text(data.order);
+                    $('#main-overlay .panel-body .order-response .order-price').text('Total: ' + $('.total-price').text() + ' FoM credits');
+
+
+                    $('input:text:visible:first').focus();
                 }).fail(function(data) {
                     console.log('order failed')
                 });
@@ -131,11 +149,35 @@ var kassa = {
         });
 
         $('#main-overlay').on('click', '.order-next', function() {
-            console.log('9');
             $('.order-list').empty();
             $('#main').removeClass('blurable');
             $('#main-overlay').hide();
             updateTotal();
+            currentParticipant.barcode = $('#order-next-barcode').val();
+            $.post(kassa.api+'user', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id, barcode: $('#order-next-barcode').val()}).done(function(data) {
+                currentParticipant.id = data.id;
+                currentParticipant.name = data.name;
+                currentParticipant.image = data.image;
+                currentParticipant.crew = data.crew;
+            }).fail(function() {
+                console.log('Failed to load user data!');
+                currentParticipant.id = 0;
+                currentParticipant.name = "Not found";
+                currentParticipant.image = "http://www.fom.be/img/icons/default/defaultavatar.jpg";
+                currentParticipant.crew = 0;
+            }).always(function() {
+                $('#user-data .user-nickname').text(currentParticipant.name);
+                $('#user-data .user-image').attr('src', currentParticipant.image);
+                if(currentParticipant.crew == 1) {
+                    $('#user-data .user-crew').prop('checked', true);
+                } else {
+                    $('#user-data .user-crew').prop('checked', false);
+                }
+            });
+        });
+
+        $('#main-overlay').on('submit', '.start-form', function() {
+            return false;
         });
 
         $('.order-reset').click(function() {
@@ -143,7 +185,17 @@ var kassa = {
             updateTotal();
         });
 
-        $.post(kassa.api+'products/get', {uid: kassa.uid, secret: kassa.secret}).done(function(data) {
+        $('#user-data .user-crew').change(function() {
+            console.log(1);
+            if($('#user-data .user-crew').prop('checked')) {
+                currentParticipant.crew = 1;
+            } else {
+                currentParticipant.crew = 0;
+            }
+
+        });
+
+        $.post(kassa.api+'products', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id}).done(function(data) {
             categories = data;
             $('#categories').empty();
             $('.order-list').empty();
@@ -156,7 +208,8 @@ var kassa = {
                 }
                 $('#products').append('<div class="row" id="row-category-'+category.id+'" data-category="'+category.id+'"></h3>');
                 category.products.forEach(function(product) {
-                    $('#row-category-'+category.id).append('<div class="col-lg-2 col-md-3 col-sm-3" id="products-'+product.id+'"><div class="thumbnail product" data-product-id="'+product.id+'"><img src="'+product.image+'" alt="'+product.name+'"><div class="caption"><p class="product-info"><span class="product-name">'+product.name+'</span><span class="product-price">'+product.price+'</span></p></div></div></div>');
+                    product.price = parseFloat(product.price);
+                    $('#row-category-'+category.id).append('<div class="col-lg-2 col-md-3 col-sm-3" id="products-'+product.id+'"><div class="thumbnail product" data-product-id="'+product.id+'"><img src="https://cdn.kassakiosk.be/images/products/'+product.id+'.png" alt="'+product.name+'"><div class="caption"><p class="product-info"><span class="product-name">'+product.name+'</span><span class="product-price">'+product.price+'</span></p></div></div></div>');
                     if(product.visible) {
                         $('#products-'+product.id).show();
                     } else {
@@ -171,7 +224,7 @@ var kassa = {
         });
 
         setInterval(function() {
-            $.post(kassa.api+'products/get', {uid: kassa.uid, secret: kassa.secret}).done(function(data) {
+            $.post(kassa.api+'products', {uid: kassa.uid, secret: kassa.secret, kiosk_id: kassa.id}).done(function(data) {
                 categories = data;
                 categories.forEach(function(category) {
                     if(category.visible) {
@@ -184,12 +237,14 @@ var kassa = {
                             $('#products-'+product.id).show();
                         } else {
                             $('#products-'+product.id).hide();
+                            $('.order-product-'+product.id).remove();
                         }
                     });
                 });
                 updateScroll();
+                updateTotal();
             });
-        }, 5000);
+        }, 1000);
 
         function getProductById(id) {
             var returnVar;
@@ -217,23 +272,29 @@ var kassa = {
             var id = '#order-product-'+product.id;
             if($(id).length) {
                 var amount  = $(id).data('amount')+1;
-                var price   = amount * product.price;
+                var price = 0;
+                if(currentParticipant.crew == 0) {
+                    price   = amount * product.price;
+                }
 
                 $(id).data('amount', amount);
                 $(id).data('price', price);
                 $(id).data('product', product.id);
                 $(id+' .product-amount').text(amount);
-                $(id+' .product-price').text(price.toFixed(2));
+                $(id+' .product-price').text(parseFloat(price).toFixed(2));
             } else {
                 var amount  = 1;
-                var price   = product.price;
+                var price = 0;
+                if(currentParticipant.crew == 0) {
+                    price   = amount * product.price;
+                }
 
-                $('.order-list').append('<li class="product" id="order-product-'+product.id+'"></li>');
+                $('.order-list').append('<li class="product order-product-'+product.id+'" id="order-product-'+product.id+'"></li>');
 
                 $(id).append('<span class="product-amount">'+amount+'</span>');
                 $(id).append('<span class="product-name">'+product.name+'</span>');
                 $(id).append('<span class="product-cancel"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></span>');
-                $(id).append('<span class="product-price">'+price.toFixed(2)+'</span>');
+                $(id).append('<span class="product-price">'+parseFloat(price).toFixed(2)+'</span>');
                 $(id).append('<span class="product-clear"></span>');
 
                 $(id).data('amount', amount);
@@ -245,9 +306,12 @@ var kassa = {
 
         function addProductWithSub(product, subproduct) {
             var id = '#order-product-'+product.id+'-sub-'+subproduct.id;
-            if($(id).length) {
+            if($(id).length > 0) {
                 var amount  = $(id).data('amount')+1;
-                var price   = amount * (product.price + subproduct.price);
+                var price = 0;
+                if(currentParticipant.crew == 0) {
+                    price   = amount * (product.price + subproduct.price);
+                }
 
                 $(id).data('amount', amount);
                 $(id).data('price', price);
@@ -257,14 +321,17 @@ var kassa = {
                 $(id+' .product-price').text(price.toFixed(2));
             } else {
                 var amount  = 1;
-                var price   = product.price + subproduct.price;
+                var price = 0;
+                if(currentParticipant.crew == 0) {
+                    price   = amount * (product.price + subproduct.price);
+                }
 
-                $('.order-list').append('<li class="product" id="order-product-'+product.id+'-sub-'+subproduct.id+'"></li>');
+                $('.order-list').append('<li class="product order-product-'+product.id+'" id="order-product-'+product.id+'-sub-'+subproduct.id+'"></li>');
 
                 $(id).append('<span class="product-amount">'+amount+'</span>');
                 $(id).append('<span class="product-name">'+product.name+'</span>');
                 $(id).append('<span class="product-cancel"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></span>');
-                $(id).append('<span class="product-price">'+price.toFixed(2)+'</span>');
+                $(id).append('<span class="product-price">'+parseFloat(price).toFixed(2)+'</span>');
                 $(id).append('<span class="product-sub">'+subproduct.name+'</span>');
                 $(id).append('<span class="product-clear"></span>');
 
@@ -281,7 +348,7 @@ var kassa = {
             $('.order-list li').each(function() {
                total += $(this).data('price');
             });
-            $('.total-price').text(total.toFixed(2));
+            $('.total-price').text(parseFloat(total).toFixed(2));
         }
 
         function isEmpty(input) {
@@ -312,8 +379,25 @@ var kassa = {
             $('.thumbnail img').each(function() {
                 $(this).css('width', '100%')
                 $(this).css('height', $(this).css('width'));
-                console.log('1');
             });
+        }
+
+        function startFirstOrder() {
+            $('#main').addClass('blurable');
+            $('#main-overlay').show();
+
+            $('#main-overlay .panel-body').empty().append('<div class="order-response"></div>');
+            $('#main-overlay .panel-body .order-response').append('<h3 class="order-header">Your order number</h3>');
+            $('#main-overlay .panel-body .order-response').append('<h1 class="order-nr"></h1>');
+            $('#main-overlay .panel-body .order-response').append('<h3 class="order-price"></h3>');
+            $('#main-overlay .panel-body').append('<div class="order-start"></div>');
+            $('#main-overlay .panel-body .order-start').append('<h3 class="order-start-header">Next customer</h3>');
+            $('#main-overlay .panel-body .order-start').append('<form class="start-form"></form>');
+            $('#main-overlay .panel-body .order-start .start-form').append('<div class="form-group"><input type="text" class="form-control" id="order-next-barcode" placeholder="barcode"></div>');
+            $('#main-overlay .panel-body .order-start .start-form').append('<button type="submit" class="btn btn-danger btn-lg order-next">Next order</button>');
+
+            $('#order-next-barcode').focus();
+            $('#main-overlay .panel-body .order-response').hide();
         }
     }),
     setup: (function() {
@@ -323,6 +407,7 @@ var kassa = {
                 $('#main-overlay').show();
             } else {
                 var setup = JSON.parse(localStorage.kassa);
+                kassa.id = setup.id;
                 kassa.api = setup.api;
                 kassa.uid = setup.uid;
                 kassa.secret = setup.secret;
@@ -336,13 +421,14 @@ var kassa = {
                 kassa.secret = $('#setup-secret').val();
                 $.post(kassa.api+'check', {uid: kassa.uid, secret: kassa.secret}, function(data) {
                     if(data.success) {
+                        kassa.id = data.kiosk_id;
                         localStorage.kassa = JSON.stringify({
+                            id: kassa.id,
                             api: kassa.api,
                             uid: kassa.uid,
                             secret: kassa.secret
                         });
-                        $('#main').removeClass('blurable');
-                        $('#main-overlay').hide();
+                        //$('#main-overlay').empty();
                         kassa.run();
                     } else {
                         $('#main-overlay .panel-body').prepend('<div class="alert alert-danger setup-error" role="alert">Login failed!</div>');
