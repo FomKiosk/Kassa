@@ -138,7 +138,7 @@ var kassa = {
                     $('#main-overlay .panel-body .order-response .order-price').text('Total: ' + $('.total-price').text() + ' FoM credits');
 
 
-                    $('input:text:visible:first').focus();
+                    $('input:text:visible:first').val('').focus();
                 }, function(data) {
                     console.log('order failed')
                 });
@@ -220,7 +220,7 @@ var kassa = {
             updateScroll();
         });
 
-        /*setInterval(function() {
+        setInterval(function() {
             sendPost('products', {}, function(data) {
                 categories = data;
                 categories.forEach(function(category) {
@@ -241,7 +241,7 @@ var kassa = {
                 updateScroll();
                 updateTotal();
             });
-        }, 1000);*/
+        }, 1000);
 
         function getProductById(id) {
             var returnVar;
@@ -307,7 +307,7 @@ var kassa = {
                 var amount  = $(id).data('amount')+1;
                 var price = 0;
                 if(currentParticipant.crew == 0) {
-                    price   = amount * (product.price + subproduct.price);
+                    price   = amount * (parseFloat(product.price) + parseFloat(subproduct.price));
                 }
 
                 $(id).data('amount', amount);
@@ -320,7 +320,7 @@ var kassa = {
                 var amount  = 1;
                 var price = 0;
                 if(currentParticipant.crew == 0) {
-                    price   = amount * (product.price + subproduct.price);
+                    price   = amount * (parseFloat(product.price) + parseFloat(subproduct.price));
                 }
 
                 $('.order-list').append('<li class="product order-product-'+product.id+'" id="order-product-'+product.id+'-sub-'+subproduct.id+'"></li>');
@@ -393,7 +393,7 @@ var kassa = {
             $('#main-overlay .panel-body .order-start .start-form').append('<div class="form-group"><input type="text" class="form-control" id="order-next-barcode" placeholder="barcode"></div>');
             $('#main-overlay .panel-body .order-start .start-form').append('<button type="submit" class="btn btn-danger btn-lg order-next">Next order</button>');
 
-            $('#order-next-barcode').focus();
+            $('#order-next-barcode').val('').focus();
             $('#main-overlay .panel-body .order-response').hide();
         }
 
